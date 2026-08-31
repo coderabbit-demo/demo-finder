@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CodeRabbit Demo Finder — Mockup</title>
+<style>
+:root{
+  --bg:#0d1117;--panel:#161b22;--panel2:#1c2330;--border:#2d333b;--text:#e6edf3;
+  --muted:#8b949e;--accent:#ff6b35;--accent2:#f97316;--green:#3fb950;--blue:#58a6ff;
+  --yellow:#d29922;--red:#f85149;--purple:#bc8cff;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:14px}
+.app{display:flex;min-height:100vh}
+/* sidebar */
+.side{width:220px;background:var(--panel);border-right:1px solid var(--border);padding:16px 10px;flex-shrink:0}
+.logo{display:flex;align-items:center;gap:8px;font-weight:700;font-size:15px;padding:6px 10px 18px}
+.logo .dot{width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:14px}
+.nav{display:flex;flex-direction:column;gap:2px}
+.nav button{all:unset;cursor:pointer;padding:9px 10px;border-radius:8px;color:var(--muted);display:flex;align-items:center;gap:9px}
+.nav button.active{background:var(--panel2);color:var(--text)}
+.nav button:hover{color:var(--text)}
+.nav .v2{margin-left:auto;font-size:10px;background:#2d1b4e;color:var(--purple);padding:1px 6px;border-radius:8px}
+.main{flex:1;padding:24px 30px;max-width:1100px}
+h1{font-size:19px;margin-bottom:4px}
+.sub{color:var(--muted);margin-bottom:20px}
+/* generic */
+.card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:12px}
+.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.pill{font-size:11px;padding:2px 9px;border-radius:10px;border:1px solid var(--border);color:var(--muted)}
+.pill.g{color:var(--green);border-color:#1f4d2e}
+.pill.b{color:var(--blue);border-color:#1e3a5f}
+.pill.y{color:var(--yellow);border-color:#4d3d1f}
+.pill.r{color:var(--red);border-color:#5c2626}
+.pill.p{color:var(--purple);border-color:#3b2d5c}
+.btn{all:unset;cursor:pointer;background:var(--accent);color:#fff;padding:8px 16px;border-radius:8px;font-weight:600;font-size:13px}
+.btn.ghost{background:transparent;border:1px solid var(--border);color:var(--text)}
+.btn.sm{padding:5px 12px;font-size:12px}
+select,input[type=text],textarea{background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 12px;font-size:13px;font-family:inherit}
+textarea{width:100%;resize:vertical}
+.score{font-weight:700;font-size:16px}
+.score.hi{color:var(--green)}.score.mid{color:var(--yellow)}.score.lo{color:var(--red)}
+.mono{font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12px}
+.codeblock{background:#0a0d12;border:1px solid var(--border);border-radius:8px;padding:12px;white-space:pre;overflow-x:auto;line-height:1.55}
+.k{color:var(--blue)}.s{color:#a5d6ff}.c{color:var(--muted)}
+.tab{display:none}.tab.active{display:block}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.uc{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:12px;cursor:pointer}
+.uc:hover{border-color:var(--accent)}
+.uc h4{font-size:13px;margin-bottom:4px}
+.uc p{font-size:11.5px;color:var(--muted);line-height:1.4}
+.uc .cnt{float:right;font-size:11px;color:var(--green)}
+.uc .cnt.none{color:var(--red)}
+.stepper{display:flex;gap:0;margin-bottom:18px}
+.step{flex:1;text-align:center;padding:9px;border-bottom:3px solid var(--border);color:var(--muted);font-size:12.5px}
+.step.done{border-color:var(--green);color:var(--green)}
+.step.cur{border-color:var(--accent);color:var(--text);font-weight:600}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.4px;padding:8px 10px;border-bottom:1px solid var(--border)}
+td{padding:10px;border-bottom:1px solid var(--border);vertical-align:top}
+tr.clickable{cursor:pointer}tr.clickable:hover{background:var(--panel2)}
+.toggle{width:34px;height:19px;border-radius:10px;background:var(--border);position:relative;cursor:pointer;flex-shrink:0}
+.toggle.on{background:var(--green)}
+.toggle::after{content:'';position:absolute;top:2px;left:2px;width:15px;height:15px;border-radius:50%;background:#fff;transition:.15s}
+.toggle.on::after{left:17px}
+.detail{position:fixed;top:0;right:-520px;width:520px;height:100vh;background:var(--panel);border-left:1px solid var(--border);padding:24px;overflow-y:auto;transition:right .25s;z-index:10;box-shadow:-8px 0 30px rgba(0,0,0,.5)}
+.detail.open{right:0}
+.close{all:unset;cursor:pointer;color:var(--muted);float:right;font-size:18px}
+.banner{background:#1a2333;border:1px solid #1e3a5f;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:var(--blue)}
+.chat{display:flex;flex-direction:column;gap:10px;margin-top:14px}
+.msg{max-width:80%;padding:10px 14px;border-radius:12px;font-size:13px;line-height:1.5}
+.msg.user{align-self:flex-end;background:#1e3a5f}
+.msg.bot{align-self:flex-start;background:var(--panel2);border:1px solid var(--border)}
+.faded{opacity:.45;pointer-events:none}
+.wonby{font-size:11px;padding:1px 7px;border-radius:8px}
+</style>
+</head>
+<body>
+<div class="app">
+  <nav class="side">
+    <div class="logo"><span class="dot">🐇</span>Demo Finder</div>
+    <div class="nav">
+      <button class="active" data-tab="finder" onclick="go('finder',this)">🔎 PR Finder</button>
+      <button data-tab="library" onclick="go('library',this)">📚 Use-Case Library</button>
+      <button data-tab="ask" onclick="go('ask',this)">💬 Ask (NL search)</button>
+      <button data-tab="forge" onclick="go('forge',this)">🔧 Fork &amp; Configure</button>
+      <button data-tab="sources" onclick="go('sources',this)">🗂 Sources</button>
+      <button data-tab="configlab" onclick="go('configlab',this)">🧪 Config Lab <span class="v2">v2</span></button>
+    </div>
+  </nav>
+
+  <main class="main">
+
+  <!-- ============ FINDER ============ -->
+  <section id="finder" class="tab active">
+    <h1>PR Finder</h1>
+    <div class="sub">Open PRs across your included repos, scored as demo candidates per use case. Crawled 2h ago · 14 repos · 312 open PRs.</div>
+    <div class="row" style="margin-bottom:14px">
+      <select><option>Use case: Sequence Diagrams</option><option>Committable Suggestions</option><option>Pipeline Failure</option><option>Docstrings</option><option>All use cases</option></select>
+      <select><option>Provider: GitHub</option><option>GitLab (v2)</option></select>
+      <select><option>Min score: 70</option><option>50</option><option>Any</option></select>
+      <button class="btn sm ghost">↻ Re-crawl</button>
+    </div>
+    <div class="card" style="padding:0">
+      <table>
+        <tr><th>PR</th><th>Repo</th><th>Why it's a good demo</th><th>Score</th><th></th></tr>
+        <tr class="clickable" onclick="openDetail()">
+          <td><b>#4821</b> Refactor payment webhook retry flow<br><span class="pill b">python</span> <span class="pill">7 files</span> <span class="pill">+412 −188</span></td>
+          <td class="mono">stripe/stripe-python</td>
+          <td style="color:var(--muted);font-size:12.5px">Multi-service control flow across webhook → queue → retry handler. Ideal for a sequence diagram walkthrough.</td>
+          <td><span class="score hi">94</span></td>
+          <td><button class="btn sm">Export</button></td>
+        </tr>
+        <tr class="clickable" onclick="openDetail()">
+          <td><b>#1107</b> Add async batch processor<br><span class="pill b">typescript</span> <span class="pill">4 files</span> <span class="pill">+230 −41</span></td>
+          <td class="mono">vercel/next.js (fork)</td>
+          <td style="color:var(--muted);font-size:12.5px">Producer/consumer handoff with clear actor boundaries; diagram renders 5 participants.</td>
+          <td><span class="score hi">88</span></td>
+          <td><button class="btn sm">Export</button></td>
+        </tr>
+        <tr class="clickable" onclick="openDetail()">
+          <td><b>#233</b> Fix race in session cache<br><span class="pill b">go</span> <span class="pill">2 files</span> <span class="pill">+58 −12</span></td>
+          <td class="mono">sindu/rabbits-playground</td>
+          <td style="color:var(--muted);font-size:12.5px">Only 2 actors — diagram is thin, but great for Committable Suggestions instead.</td>
+          <td><span class="score mid">61</span></td>
+          <td><button class="btn sm ghost">Export</button></td>
+        </tr>
+      </table>
+    </div>
+    <div class="banner">💡 No candidate scores ≥70 for <b>MCP Client</b> or <b>Atlas / Change Stack</b>. → <a href="#" onclick="goto('forge');return false" style="color:var(--accent)">Manufacture an example in Fork &amp; Configure</a></div>
+  </section>
+
+  <!-- ============ LIBRARY ============ -->
+  <section id="library" class="tab">
+    <h1>Use-Case Library</h1>
+    <div class="sub">Every CodeRabbit capability, its detection heuristics, and how many approved examples exist. Click one to see candidates.</div>
+    <div class="grid3">
+      <div class="uc"><span class="cnt">6 examples</span><h4>Summarization / Walkthrough</h4><p>Med-large PR, mixed file types, clear narrative arc.</p></div>
+      <div class="uc"><span class="cnt">4</span><h4>Sequence Diagrams</h4><p>Multi-file control flow, ≥3 actors/services.</p></div>
+      <div class="uc"><span class="cnt">5</span><h4>Committable Suggestions</h4><p>Small fixable defects: off-by-one, nil-check, typo in logic.</p></div>
+      <div class="uc"><span class="cnt">3</span><h4>Pipeline Failure</h4><p>Open PR with red CI check CodeRabbit can diagnose.</p></div>
+      <div class="uc"><span class="cnt">2</span><h4>Docstrings</h4><p>Public functions missing docs; python/TS best.</p></div>
+      <div class="uc"><span class="cnt">2</span><h4>Unit Test Generation</h4><p>New pure-logic module with no test file.</p></div>
+      <div class="uc"><span class="cnt">3</span><h4>Learnings (search query)</h4><p>Repo with accumulated learnings to query live.</p></div>
+      <div class="uc"><span class="cnt">4</span><h4>Tools</h4><p>Linter/SAST findings surfaced in review (ruff, semgrep…).</p></div>
+      <div class="uc"><span class="cnt">2</span><h4>Request Changes / Approval</h4><p>PR that trips a blocking review threshold.</p></div>
+      <div class="uc"><span class="cnt">3</span><h4>Chat / Agentic Chat</h4><p>Perf-issue PR for the agentic chat deep-dive.</p></div>
+      <div class="uc"><span class="cnt">1</span><h4>Jira Integration</h4><p>Pre-merge check against a linked Jira ticket.</p></div>
+      <div class="uc"><span class="cnt">2</span><h4>Assessment vs Linked Issues</h4><p>PR body links issue; scope mismatch to surface.</p></div>
+      <div class="uc"><span class="cnt">1</span><h4>Create Issues (native)</h4><p>Review finding → GitHub/GitLab issue creation.</p></div>
+      <div class="uc"><span class="cnt">2</span><h4>Related PRs &amp; Issues</h4><p>Repo with overlapping in-flight work.</p></div>
+      <div class="uc"><span class="cnt">2</span><h4>Suggested Reviewers</h4><p>Repo with commit-history ownership signal.</p></div>
+      <div class="uc"><span class="cnt">1</span><h4>Pre-Merge Checks</h4><p>Custom check config (title format, coverage…).</p></div>
+      <div class="uc"><span class="cnt">2</span><h4>Code Guidelines / Index</h4><p>Repo with CONTRIBUTING/style docs indexed.</p></div>
+      <div class="uc"><span class="cnt">2</span><h4>Path Instructions &amp; Filters</h4><p>Monorepo with per-path review rules.</p></div>
+      <div class="uc"><span class="cnt">1</span><h4>Web Search</h4><p>PR using a lib with a recent CVE/deprecation.</p></div>
+      <div class="uc"><span class="cnt">1</span><h4>Planning</h4><p>Issue → plan → implementation flow.</p></div>
+      <div class="uc"><span class="cnt none">0 — manufacture</span><h4>MCP Client</h4><p>Review enriched by an MCP server connection.</p></div>
+      <div class="uc"><span class="cnt none">0 — manufacture</span><h4>Multi-repo Example</h4><p>Change spanning two connected repos.</p></div>
+      <div class="uc"><span class="cnt none">0 — manufacture</span><h4>Atlas / Change Stack</h4><p>Stacked changes reviewed as one narrative.</p></div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <b>Need a use case that isn't here?</b>
+      <div class="row" style="margin-top:10px">
+        <input type="text" style="flex:1" placeholder="Describe it — e.g. 'reviews of .sql migration files that flag missing indexes'">
+        <button class="btn">Create use case</button>
+      </div>
+      <div style="color:var(--muted);font-size:12px;margin-top:8px">The LLM turns your description into detection heuristics + required config, then the finder and fork engine work on it like any built-in use case. GitHub &amp; GitLab examples only for now.</div>
+    </div>
+  </section>
+
+  <!-- ============ ASK ============ -->
+  <section id="ask" class="tab">
+    <h1>Ask</h1>
+    <div class="sub">Natural-language search across indexed open-source + your included org repos (CodeRabbit org excluded).</div>
+    <div class="row">
+      <input type="text" id="q" style="flex:1" value="a terraform PR where coderabbit flags a security misconfig and offers a committable fix">
+      <button class="btn" onclick="runAsk()">Search</button>
+    </div>
+    <div class="chat" id="askResults" style="display:none">
+      <div class="msg user">a terraform PR where coderabbit flags a security misconfig and offers a committable fix</div>
+      <div class="msg bot">
+        Parsed intent: <span class="pill b">lang: terraform</span> <span class="pill b">use case: Committable Suggestions + Tools</span> <span class="pill b">signal: security</span><br><br>
+        <b>2 matches found:</b><br><br>
+        <b>1. gruntwork-io/terragrunt #2891</b> — open S3 bucket ACL; CodeRabbit posts checkov finding + committable fix. <span class="score hi">91</span><br>
+        <b>2. sindu/aws-infra #47</b> — security-group 0.0.0.0/0 ingress; committable suggestion. <span class="score mid">74</span><br><br>
+        <span style="color:var(--muted)">No match ≥ threshold for the exact combination? I'd hand off to <b>Fork &amp; Configure</b> with the intent pre-filled.</span>
+      </div>
+      <div class="row">
+        <button class="btn sm">Export #1 for demo</button>
+        <button class="btn sm ghost" onclick="goto('forge')">No good fit → Manufacture</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FORGE ============ -->
+  <section id="forge" class="tab">
+    <h1>Fork &amp; Configure</h1>
+    <div class="sub">No solid example exists? Pick the best forkable repo, get the exact change + config, open the PR, watch CodeRabbit review it your way.</div>
+    <div class="stepper">
+      <div class="step done">1 · Target use case</div>
+      <div class="step done">2 · Pick base repo</div>
+      <div class="step cur">3 · Review change + config</div>
+      <div class="step">4 · Fork &amp; open PR</div>
+    </div>
+    <div class="card">
+      <div class="row"><b>Use case:</b> <span class="pill p">MCP Client</span> <b style="margin-left:12px">Base repo:</b> <span class="mono">fastapi/full-stack-fastapi-template</span> <span class="pill g">MIT · active · no CodeRabbit ✓</span></div>
+      <div style="color:var(--muted);font-size:12.5px;margin-top:8px">Ranked #1 of 6 forkable candidates: python + realistic service shape, no existing .coderabbit.yaml to conflict, small enough to fork cleanly.</div>
+    </div>
+    <div class="grid2">
+      <div class="card">
+        <b>Suggested change</b> <span class="pill y">1 file · triggers the behavior</span>
+        <div class="codeblock mono" style="margin-top:10px"><span class="c"># backend/app/api/routes/items.py</span>
+<span class="c"># Add an endpoint that queries a Linear issue</span>
+<span class="c"># — CodeRabbit's MCP client will pull the</span>
+<span class="c"># linked issue context into the review.</span>
+
+@router.post(<span class="s">"/items/from-issue"</span>)
+def create_from_issue(issue_key: str):
+    <span class="c"># Implements LIN-482: bulk import items</span>
+    ...</div>
+      </div>
+      <div class="card">
+        <b>Suggested .coderabbit.yaml</b>
+        <div class="row" style="float:right;gap:6px"><button class="btn sm ghost" onclick="swapCfg('yaml',this)">yaml</button><button class="btn sm ghost" onclick="swapCfg('ts',this)">custom .ts</button></div>
+        <div class="codeblock mono" id="cfgYaml" style="margin-top:10px"><span class="c"># why: MCP demo needs knowledge_base +</span>
+<span class="c"># the MCP server wired into reviews</span>
+<span class="k">reviews:</span>
+  <span class="k">profile:</span> <span class="s">assertive</span>
+  <span class="k">sequence_diagrams:</span> <span class="s">true</span>
+<span class="k">knowledge_base:</span>
+  <span class="k">mcp:</span>
+    <span class="k">usage:</span> <span class="s">enabled</span>
+    <span class="k">servers:</span>
+      - <span class="k">name:</span> <span class="s">linear</span>
+        <span class="k">url:</span> <span class="s">https://mcp.linear.app/sse</span></div>
+        <div class="codeblock mono" id="cfgTs" style="margin-top:10px;display:none"><span class="c">// .coderabbit/review.ts — custom review methods</span>
+<span class="k">export default</span> defineReview({
+  <span class="k">onFile</span>(<span class="s">"**/*.py"</span>, (ctx) =&gt; {
+    ctx.requireIssueLink({ provider: <span class="s">"linear"</span> });
+    ctx.enrichFromMcp(<span class="s">"linear"</span>, ctx.pr.linkedIssues);
+  }),
+});</div>
+      </div>
+    </div>
+    <div class="row" style="margin-top:6px">
+      <button class="btn">Fork to my env → commit → open PR</button>
+      <button class="btn ghost">Edit change</button>
+      <button class="btn ghost">Regenerate config</button>
+      <span style="color:var(--muted);font-size:12px">Fork lands in your personal GitHub; PR opens against the fork so CodeRabbit reviews it.</span>
+    </div>
+  </section>
+
+  <!-- ============ SOURCES ============ -->
+  <section id="sources" class="tab">
+    <h1>Sources</h1>
+    <div class="sub">Choose which orgs/repos are crawled and indexed. Stored in Postgres. The CodeRabbit org is always excluded.</div>
+    <div class="card" style="padding:0">
+      <table>
+        <tr><th>Source</th><th>Type</th><th>Repos included</th><th>Crawl</th></tr>
+        <tr><td><b>Open source (curated)</b><br><span style="color:var(--muted);font-size:12px">stripe, fastapi, terragrunt, +18</span></td><td><span class="pill b">OSS</span></td><td>21 / 21</td><td><div class="toggle on" onclick="this.classList.toggle('on')"></div></td></tr>
+        <tr><td><b>sindu (personal GitHub)</b><br><span style="color:var(--muted);font-size:12px">rabbits-playground, aws-infra, +6</span></td><td><span class="pill g">Personal</span></td><td>5 / 8 <button class="btn sm ghost" style="margin-left:6px">choose…</button></td><td><div class="toggle on" onclick="this.classList.toggle('on')"></div></td></tr>
+        <tr><td><b>acme-customer-org</b><br><span style="color:var(--muted);font-size:12px">connected via GitHub App</span></td><td><span class="pill y">Org</span></td><td>2 / 14 <button class="btn sm ghost" style="margin-left:6px">choose…</button></td><td><div class="toggle" onclick="this.classList.toggle('on')"></div></td></tr>
+        <tr class="faded"><td><b>coderabbitai</b></td><td><span class="pill r">Excluded</span></td><td>—</td><td>always off</td></tr>
+      </table>
+    </div>
+    <button class="btn ghost">+ Connect GitHub org</button> <button class="btn ghost">+ Connect GitLab group (v2)</button>
+  </section>
+
+  <!-- ============ CONFIG LAB (teaser) ============ -->
+  <section id="configlab" class="tab">
+    <h1>Config Lab <span class="pill p">v2 preview</span></h1>
+    <div class="sub">Live config resolution per the Indeed spec: inheritance-by-default, first-writer-wins walk, includes, remote_config, global overrides, schema defaults — with a per-key "won by" trace.</div>
+    <div class="grid2">
+      <div class="card faded">
+        <b>Inputs</b>
+        <div style="margin-top:10px;font-size:12.5px;color:var(--muted)">repo .coderabbit.yaml · central group/coderabbit · workspace UI · global overrides</div>
+        <div class="codeblock mono" style="margin-top:10px"><span class="c"># repo: group/team/svc</span>
+<span class="k">reviews:</span>
+  <span class="k">profile:</span> <span class="s">assertive</span></div>
+      </div>
+      <div class="card">
+        <b>Resolved · won-by trace</b>
+        <table style="margin-top:8px;font-size:12.5px">
+          <tr><td class="mono">reviews.commit_status</td><td class="mono">false</td><td><span class="wonby pill r">global override</span></td></tr>
+          <tr><td class="mono">reviews.profile</td><td class="mono">assertive</td><td><span class="wonby pill g">repo</span></td></tr>
+          <tr><td class="mono">reviews.review_status</td><td class="mono">false</td><td><span class="wonby pill b">central (inherited, no flag)</span></td></tr>
+          <tr><td class="mono">reviews.poem</td><td class="mono">false</td><td><span class="wonby pill b">central</span></td></tr>
+          <tr><td class="mono">chat.art</td><td class="mono">false</td><td><span class="wonby pill y">workspace</span></td></tr>
+          <tr><td class="mono">everything else</td><td class="mono">…</td><td><span class="wonby pill">schema defaults</span></td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="banner">Built on <span class="mono">services/config_engine/resolver.py</span> — the same module the fork engine already uses in v1 to generate resolution-valid configs. Ask for it anytime and it graduates from teaser to tab.</div>
+  </section>
+
+  </main>
+</div>
+
+<!-- PR detail drawer -->
+<div class="detail" id="drawer">
+  <button class="close" onclick="document.getElementById('drawer').classList.remove('open')">✕</button>
+  <h2 style="font-size:16px">#4821 Refactor payment webhook retry flow</h2>
+  <div class="row" style="margin:8px 0 14px"><span class="pill b">stripe/stripe-python</span> <span class="pill g">Sequence Diagrams · 94</span> <span class="pill">open · CI green</span></div>
+  <div class="card"><b>Why 94?</b><div style="color:var(--muted);font-size:12.5px;margin-top:6px;line-height:1.5">5 participants (webhook, validator, queue, retry handler, DB) with clean async handoffs. CodeRabbit's mermaid diagram will render all hops. Diff small enough to walk through live in &lt;3 min.</div></div>
+  <div class="card"><b>Also scores for</b><div class="row" style="margin-top:8px"><span class="pill">Summarization 89</span><span class="pill">Chat 72</span><span class="pill">Docstrings 58</span></div></div>
+  <div class="card"><b>Formatted demo export</b><div class="codeblock mono" style="margin-top:8px">{ "url": "github.com/stripe/…/pull/4821",
+  "talk_track": "Open walkthrough →
+   scroll to diagram → ask chat:
+   'why does retry skip step 3?'",
+  "config_needed": ["reviews.sequence_diagrams: true"] }</div></div>
+  <button class="btn">Copy export</button> <button class="btn ghost">Save as approved example</button>
+</div>
+
+<script>
+function go(id,btn){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+}
+function goto(id){
+  const btn=document.querySelector('.nav button[data-tab="'+id+'"]');
+  go(id,btn);
+}
+function openDetail(){document.getElementById('drawer').classList.add('open')}
+function runAsk(){document.getElementById('askResults').style.display='flex'}
+function swapCfg(kind,btn){
+  document.getElementById('cfgYaml').style.display = kind==='yaml'?'block':'none';
+  document.getElementById('cfgTs').style.display   = kind==='ts'  ?'block':'none';
+}
+</script>
+</body>
+</html>
