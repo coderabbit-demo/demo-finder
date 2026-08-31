@@ -2,6 +2,7 @@
 
 Find, curate, and manufacture the perfect PR to demo any CodeRabbit capability.
 See `design/VISION.md` for the approved spec and `design/mockup.html` for the original vision.
+The frontend and API can also be started independently during local development.
 
 ## Quick start (no docker, SQLite)
 
