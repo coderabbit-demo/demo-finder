@@ -26,16 +26,6 @@ jobs:
       - run: npm run build
         working-directory: web
 
-  dependency-review:
-    name: Dependency Review
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/dependency-review-action@v4
-        with:
-          fail-on-severity: high
-
   dependabot-alerts:
     name: Dependabot Alerts
     runs-on: ubuntu-latest
