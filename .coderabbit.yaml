@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+
+reviews:
+  request_changes_workflow: true
+  pre_merge_checks:
+    override_requested_reviewers_only: true
+    custom_checks:
+      - name: "Critical security regression"
+        mode: "error"
+        instructions: >-
+          Evaluate the current PR diff and directly affected code. Fail only when
+          the PR introduces or materially worsens a Critical vulnerability
+          (CVSS 9.0–10.0 equivalent), such as unauthenticated remote code
+          execution, broad authentication bypass, internet-reachable SQL or
+          command injection, or exposure of active production credentials.
+          Require a concrete attack path and changed-file evidence. Ignore
+          unrelated pre-existing findings. Return Inconclusive when severity or
+          exploitability cannot be established.
+      - name: "High security regression"
+        mode: "warning"
+        instructions: >-
+          Evaluate the current PR diff and directly affected code. Fail when the
+          PR introduces or materially worsens a High vulnerability
+          (CVSS 7.0–8.9 equivalent), such as sensitive-data authorization bypass,
+          exploitable SSRF, stored XSS with meaningful impact, path traversal,
+          insecure deserialization, or significant cryptographic failure.
+          Require a credible attack path and changed-file evidence. Exclude
+          Critical findings handled by the separate check and ignore unrelated
+          pre-existing findings. Return Inconclusive when evidence is insufficient.
