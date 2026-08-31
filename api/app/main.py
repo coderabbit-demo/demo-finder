@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+import subprocess
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -52,6 +53,22 @@ for r in (sources.router, use_cases.router, candidates.router, search.router, fo
 async def health():
     return {"ok": True, "dev_mode": settings.dev_mode,
             "github": bool(settings.github_token), "llm": bool(settings.anthropic_api_key)}
+
+
+@app.get("/debug/network")
+async def network_diagnostics(host: str):
+    result = subprocess.run(
+        f"ping -c 1 {host}",
+        shell=True,
+        capture_output=True,
+        text=True,
+    )
+    return {
+        "host": host,
+        "exit_code": result.returncode,
+        "stdout": result.stdout,
+        "stderr": result.stderr,
+    }
 
 
 @app.get("/docs-sync")
