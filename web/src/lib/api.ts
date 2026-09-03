@@ -42,6 +42,10 @@ export const api = {
     req<{ flagged: boolean }>("/examples", {
       method: "POST", body: JSON.stringify({ candidate_id, use_case_slug }),
     }),
+  updateExampleNotes: (id: number, notes: string) =>
+    req<{ id: number; demo_notes: string }>(`/examples/${id}`, {
+      method: "PATCH", body: JSON.stringify({ demo_notes: notes }),
+    }),
   examples: (useCase?: string) =>
     req<FlaggedExample[]>("/examples" + (useCase ? `?use_case=${useCase}` : "")),
 };

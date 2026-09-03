@@ -8,12 +8,26 @@ export default function Library({ onManufacture, onOpenFinder }:
   const [prompt, setPrompt] = useState("");
   const [creating, setCreating] = useState(false);
   const [msg, setMsg] = useState("");
+  const [notes, setNotes] = useState<Record<number, string>>({});
 
   const load = () => {
     api.useCases().then(setUseCases);
-    api.examples().then(setFlagged);
+    api.examples().then((examples) => {
+      setFlagged(examples);
+      setNotes(Object.fromEntries(examples.map((example) => [example.id, example.demo_notes])));
+    });
   };
   useEffect(() => { load(); }, []);
+
+  const saveNotes = async (id: number, original: string) => {
+    const value = notes[id] ?? "";
+    if (value === original) return;
+    try {
+      await api.updateExampleNotes(id, value);
+    } catch (e) {
+      setMsg(String(e));
+    }
+  };
 
   const create = async () => {
     if (!prompt.trim()) return;
@@ -68,6 +82,15 @@ export default function Library({ onManufacture, onOpenFinder }:
                   className="mt-1 block truncate text-[11px] text-warn hover:underline">
                   ★ {f.pr.repo} #{f.pr.number}
                 </a>
+                <textarea
+                  value={notes[f.id] ?? f.demo_notes}
+                  onChange={(e) => setNotes((current) => ({ ...current, [f.id]: e.target.value }))}
+                  onBlur={() => saveNotes(f.id, f.demo_notes)}
+                  onClick={(e) => e.stopPropagation()}
+                  placeholder="Demo note"
+                  rows={2}
+                  className="mt-1 w-full resize-y rounded-lg border border-borderc bg-panel2 px-2 py-1 text-[11px] text-txt"
+                />
               ))}
               {u.good_candidates === 0 && (
                 <button

@@ -16,6 +16,10 @@ class FlagIn(BaseModel):
     demo_notes: str = ""
 
 
+class NotesIn(BaseModel):
+    demo_notes: str
+
+
 @router.post("")
 async def flag(body: FlagIn, session: AsyncSession = Depends(get_session)):
     uc = (await session.execute(
@@ -34,6 +38,17 @@ async def flag(body: FlagIn, session: AsyncSession = Depends(get_session)):
     session.add(ex)
     await session.commit()
     return {"flagged": True, "id": ex.id}
+
+
+@router.patch("/{id}")
+async def update_notes(id: int, body: NotesIn,
+                       session: AsyncSession = Depends(get_session)):
+    example = await session.get(Example, id)
+    if not example:
+        raise HTTPException(404, "unknown example")
+    example.demo_notes = body.demo_notes
+    await session.commit()
+    return {"id": example.id, "demo_notes": example.demo_notes}
 
 
 @router.get("")
