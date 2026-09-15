@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -6,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..db import get_session
 from ..models import ForkSuggestion, UseCase
 from ..services import github
+from ..services.artifacts import artifact_path
 from ..services.fork_engine import generate_suggestion
 
 router = APIRouter(prefix="/fork-suggestions", tags=["forks"])
@@ -45,6 +47,17 @@ async def list_suggestions(session: AsyncSession = Depends(get_session)):
              "status": f.status, "config_kind": f.config_kind, "rationale": f.rationale,
              "suggested_changes": f.suggested_changes, "suggested_config": f.suggested_config,
              "fork_url": f.fork_url, "pr_url": f.pr_url} for f in rows]
+
+
+@router.get("/artifacts/download")
+async def download_artifact(filename: str):
+    """Download a generated config artifact for use in a manufactured PR."""
+    try:
+        config_path = artifact_path(filename)
+    except FileNotFoundError:
+        raise HTTPException(404, "config artifact not found")
+    return FileResponse(config_path, filename=config_path.name,
+                        media_type="application/octet-stream")
 
 
 @router.post("/{suggestion_id}/execute")

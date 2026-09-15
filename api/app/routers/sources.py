@@ -1,5 +1,3 @@
-from pathlib import Path
-
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
@@ -10,6 +8,7 @@ from sqlalchemy.orm import selectinload
 from ..config import settings
 from ..db import get_session
 from ..models import PrCandidate, Repo, SourceOrg
+from ..services.artifacts import artifact_path
 
 router = APIRouter(prefix="/sources", tags=["sources"])
 
@@ -24,10 +23,22 @@ class OrgIn(BaseModel):
 @router.get("/config-preview")
 async def preview_config(filename: str):
     """Return a generated config artifact for browser preview."""
-    config_path = Path(settings.config_export_dir) / filename
-    if not config_path.is_file():
+    try:
+        config_path = artifact_path(filename)
+    except FileNotFoundError:
         raise HTTPException(404, "config artifact not found")
     return FileResponse(config_path, media_type="application/x-yaml")
+
+
+@router.get("/config-metadata")
+async def config_metadata(filename: str):
+    """Return metadata used by the source-config preview screen."""
+    try:
+        config_path = artifact_path(filename)
+    except FileNotFoundError:
+        raise HTTPException(404, "config artifact not found")
+    stat = config_path.stat()
+    return {"name": config_path.name, "size": stat.st_size, "modified": stat.st_mtime}
 
 
 @router.get("/orgs")
