@@ -1,4 +1,7 @@
+from pathlib import Path
+
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,6 +19,15 @@ class OrgIn(BaseModel):
     org_name: str
     connection_type: str = "oss"
     repos: list[str] = []
+
+
+@router.get("/config-preview")
+async def preview_config(filename: str):
+    """Return a generated config artifact for browser preview."""
+    config_path = Path(settings.config_export_dir) / filename
+    if not config_path.is_file():
+        raise HTTPException(404, "config artifact not found")
+    return FileResponse(config_path, media_type="application/x-yaml")
 
 
 @router.get("/orgs")

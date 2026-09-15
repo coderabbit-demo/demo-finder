@@ -5,6 +5,7 @@ class Settings(BaseSettings):
     database_url: str = "sqlite+aiosqlite:///./demo.db"
     github_token: str = ""
     anthropic_api_key: str = ""
+    config_export_dir: str = "."
     dev_mode: bool = False
     excluded_orgs: list[str] = ["coderabbitai"]  # hard-excluded, always
     discovery_enabled: bool = True         # GitHub-wide hunt for bot-reviewed PRs on crawl
