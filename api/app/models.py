@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from typing import Optional
 
 from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
@@ -34,12 +35,12 @@ class Repo(Base):
     full_name: Mapped[str] = mapped_column(String(300), unique=True)
     provider: Mapped[str] = mapped_column(String(16), default="github")
     default_branch: Mapped[str] = mapped_column(String(100), default="main")
-    languages: Mapped[list | None] = mapped_column(JSON, default=list)
+    languages: Mapped[Optional[list]] = mapped_column(JSON, default=list)
     has_coderabbit: Mapped[bool] = mapped_column(Boolean, default=False)
     stars: Mapped[int] = mapped_column(Integer, default=0)
     forkable: Mapped[bool] = mapped_column(Boolean, default=True)
     included: Mapped[bool] = mapped_column(Boolean, default=True)
-    indexed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    indexed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
     org: Mapped[SourceOrg] = relationship(back_populates="repos")
     candidates: Mapped[list[PrCandidate]] = relationship(back_populates="repo", cascade="all, delete-orphan")
@@ -58,7 +59,7 @@ class UseCase(Base):
     definition: Mapped[str] = mapped_column(Text, default="")   # docs' own words
     doc_url: Mapped[str] = mapped_column(Text, default="")      # docs.coderabbit.ai link
     is_custom: Mapped[bool] = mapped_column(Boolean, default=False)
-    created_from_prompt: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_from_prompt: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
 
 class PrCandidate(Base):
@@ -113,15 +114,15 @@ class ForkSuggestion(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     use_case_id: Mapped[int] = mapped_column(ForeignKey("use_case.id"))
-    base_repo_id: Mapped[int | None] = mapped_column(ForeignKey("repo.id"), nullable=True)
+    base_repo_id: Mapped[Optional[int]] = mapped_column(ForeignKey("repo.id"), nullable=True)
     base_repo_full_name: Mapped[str] = mapped_column(String(300), default="")
     rationale: Mapped[str] = mapped_column(Text, default="")
     suggested_changes: Mapped[list] = mapped_column(JSON, default=list)  # [{path, description, content}]
     suggested_config: Mapped[str] = mapped_column(Text, default="")
     config_kind: Mapped[str] = mapped_column(String(8), default="yaml")  # yaml|ts
     status: Mapped[str] = mapped_column(String(16), default="draft")  # draft|forked|pr_opened|failed
-    fork_url: Mapped[str | None] = mapped_column(Text, nullable=True)
-    pr_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    fork_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    pr_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     use_case: Mapped[UseCase] = relationship()
