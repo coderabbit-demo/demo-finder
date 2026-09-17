@@ -3,6 +3,7 @@
 reviews:
   request_changes_workflow: true
   pre_merge_checks:
+    override_requested_reviewers_only: true
     custom_checks:
       - name: "No Unresolved Security Findings"
         mode: "error"
