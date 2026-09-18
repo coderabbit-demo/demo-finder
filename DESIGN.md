@@ -30,7 +30,7 @@ State lives in one DB. Crawls run as FastAPI BackgroundTasks (single-process; ar
 |---|---|---|
 | `source_org` | A connected origin of repos | `connection_type: oss\|personal\|org\|discovered\|fixture`, `included` |
 | `repo` | Crawlable repo | `full_name` unique, `included`, `forkable`, `has_coderabbit`, `languages` |
-| `use_case` | Demo capability taxonomy (26 seeded + custom) | `detection_heuristics` (jsonb), `required_config` (dotted keys), `is_custom`, `created_from_prompt` |
+| `use_case` | Demo capability taxonomy (30 seeded + custom) | `detection_heuristics` (jsonb), `required_config` (dotted keys), `is_custom`, `created_from_prompt` |
 | `pr_candidate` | A crawled/discovered open PR | `files_changed`, `diff_stats`, **`evidence_urls`** (evidence key → bot-comment anchor URL) |
 | `candidate_score` | (candidate × use case) score | `score 0-100`, `rationale`, `scored_by: review\|llm\|heuristic` |
 | `example` | Flagged keeper (★ in UI) | `status: approved`, survives re-crawls |
@@ -60,7 +60,7 @@ Migrations: `Base.metadata.create_all` + ad-hoc `ALTER TABLE` in `db.init_db()` 
 2. **Predicted (≤84, hard cap).** Weighted scoring model (`scoring.WEIGHTS`, sums to 1): `capability_fit` 0.55 (mean of the use case's applicable detectors, each normalized 0–1) · `size_fit` 0.20 (diff inside the demo-able window) · `repo_quality` 0.15 (log-scaled stars) · `freshness` 0.10 (neutral 0.5 until PR `updated_at` is captured). Missing signals score neutral, never punitive. Rationale lists each criterion's value.
 3. **LLM refine** (optional, prior ≥ 60): re-scores within the predicted band, also capped at 84.
 
-**Accuracy sources (do not define features from memory):** use-case `definition` is quoted from the coderabbit-docs repo (the docs.coderabbit.ai source) and `doc_url` links to it; config keys are verified against the live schema `https://storage.googleapis.com/coderabbit_public_assets/schema.v2.json` (the local docs checkout can lag it — e.g. `pre_merge_checks.custom_checks` exists in the live schema only). Features the docs don't define are marked `[Not documented: …]` in the seed rather than invented: committable suggestions (no yaml key), pipeline remediation (no dedicated key), agentic chat/planning (invocation-only), Atlas/change stack (absent from docs), multi-repo (scope mechanism only). Seeds upsert on every boot so definition fixes propagate to existing DBs.
+**Accuracy sources (do not define features from memory):** use-case `definition` is quoted or closely paraphrased from the current CodeRabbit documentation and `doc_url` links to the supporting page; config keys are verified against the live schema `https://storage.googleapis.com/coderabbit_public_assets/schema.v2.json`. The catalog includes documented Change Stack, Multi-Repo Analysis, Security Blast Radius, Security Architecture Review, Attack Surface, and AI Deep Scan behavior. Seeds upsert on every boot so definition fixes propagate to existing DBs.
 
 ### Deep-link anchors
 `evidence_anchors()` maps each evidence key to the `html_url` of the first bot comment proving it (`#issuecomment-…` / `#discussion_r…`). Stored on `pr_candidate.evidence_urls`; `anchor_for_use_case()` picks the right anchor per use case. Exposed as `pr.anchor_url` in `/candidates` and in exports; UI shows 🎯. Anchors are backfilled three ways during crawl: re-discovered PRs, flagged keepers hit in layer 1, and a sweep of ≤40 anchor-less candidates per crawl (layer 3).
@@ -75,7 +75,9 @@ Failure posture: every per-repo/per-PR GitHub call is try/except-continue; a bad
 
 ## 6. NL search (`services/search.py`)
 
-Query → intent (`use_case_slugs, languages, file_exts, keywords`) via LLM when available, keyword fallback otherwise → filter scored candidates by target use cases → keyword/extension boosts → top 10. If best result < 70, response sets `suggest_manufacture` and the UI offers the Forge hand-off with intent pre-filled. Every query logged to `search_log`. **Planned (M2):** pgvector embeddings over approved examples.
+Query → deterministic ranking against each use case's documented name, definition, demo guidance, detector terms, and config keys → language/file filtering → **hard example qualification** → candidate ranking by evidence quality (62%), capability relevance (23%), query context (10%), and demo size (5%). Clear queries do not call the LLM; only ambiguous queries request a constrained second opinion using known slugs.
+
+Scores order examples; they never establish eligibility. A recommended PR must be open, belong to a repo marked `has_coderabbit`, contain captured CodeRabbit review evidence, and either have direct capability-specific evidence or satisfy at least two observable diff requirements from that product's detector. This supports two honest evidence modes: `direct` (the capability is visible in the review comment) and `review-plus-diff` (CodeRabbit reviewed the PR, while a product rendered elsewhere—such as a Change Stack security view—is qualified from the diff's shape). Each result explains the documented product capability, the PR's changed scope and representative files, the exact qualifying signals, the demo action, and the CodeRabbit evidence with a deep link. If no PR clears those gates, search shows no example and offers the Forge hand-off instead of substituting an unreviewed prediction. Every query is logged to `search_log`. **Planned (M2):** embeddings over approved examples as an additional retrieval signal, not a replacement for evidence qualification.
 
 ## 7. Manufacture / fork engine (`services/fork_engine.py`)
 
@@ -121,5 +123,7 @@ Debt: Alembic migrations · arq for background jobs (crawl state is in-memory, s
 Roadmap: **M2** pgvector NL search, GitLab discovery · **M3** fork-engine polish (multi-file changes, `.sql`/config-shaped seeds, customer-shape matching) · **M4** Config Lab interactive, hardening ("make it standard": authz, arq, GitHub App).
 
 ### Changelog
+- 2026-09-18 — evidence-first search contract: CodeRabbit installation + live-review gates, product-specific diff qualification, direct-vs-review-plus-diff provenance, and exact showcase narratives.
+- 2026-09-18 — docs-backed capability search; deterministic intent parsing for clear queries; explainable use-case recommendations; language filtering; verified-evidence and demo-efficiency ranking; current Change Stack and Security taxonomy.
 - 2026-08-26 (b) — docs-accurate taxonomy (definitions quoted from coderabbit-docs, keys verified vs live schema, `[Not documented]` flags); weighted scoring rubric with banded scale + predicted cap 84; GraphQL PR snapshot (1 call vs 4, fixes ci_status); crawl progress (`/crawl/status` + live UI banner); `/docs-sync` live-schema key validation; GitHub Actions CI; rubric unit tests.
 - 2026-08-26 — evidence anchors + backfill; fixture purge on `DEV_MODE=false`; hash deep links; flags (`example`) + library deep links; hybrid discovery + evidence scoring; sources auto-discovery + delete; initial v1.

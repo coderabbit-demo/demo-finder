@@ -46,6 +46,22 @@ SIGNATURES: dict[str, tuple[str | None, list[str]]] = {
     "pipeline-failure": (None, ["pipeline_failure"]),
 }
 
+EVIDENCE_LABELS: dict[str, str] = {
+    "walkthrough": "a CodeRabbit Walkthrough",
+    "sequence_diagram": "a generated sequence diagram",
+    "committable": "a committable suggestion",
+    "linked_issues": "an assessment against linked issues",
+    "pre_merge": "pre-merge check results",
+    "related_prs": "related pull requests",
+    "related_issues": "related issues",
+    "suggested_reviewers": "suggested reviewers",
+    "tools": "linter or security-tool findings",
+    "docstrings": "docstring generation guidance",
+    "unit_tests": "unit-test generation guidance",
+    "learnings": "team learnings",
+    "pipeline_failure": "pipeline-failure analysis",
+}
+
 
 def extract_evidence(bot_text: str) -> set[str]:
     return {key for key, pat in EVIDENCE_PATTERNS.items() if pat.search(bot_text or "")}
@@ -67,6 +83,14 @@ def anchor_for_use_case(slug: str, anchors: dict[str, str]) -> str | None:
     if not sig:
         return None
     return next((anchors[k] for k in sig[1] if k in anchors), None)
+
+
+def evidence_for_use_case(slug: str, anchors: dict[str, str]) -> list[str]:
+    """Human-readable, capability-specific evidence present in a live review."""
+    sig = SIGNATURES.get(slug)
+    if not sig:
+        return []
+    return [EVIDENCE_LABELS[key] for key in sig[1] if key in anchors]
 
 
 def score_from_evidence(evidence: set[str], uc: UseCase) -> tuple[float, str] | None:
@@ -91,6 +115,9 @@ async def _ensure_repo(session: AsyncSession, full_name: str) -> Repo | None:
     repo = (await session.execute(
         select(Repo).where(Repo.full_name == full_name))).scalar_one_or_none()
     if repo:
+        # This path is reached from a GitHub search for CodeRabbit bot comments,
+        # which is stronger installation evidence than stale repository metadata.
+        repo.has_coderabbit = True
         return repo
     org = (await session.execute(
         select(SourceOrg).where(SourceOrg.org_name == owner,

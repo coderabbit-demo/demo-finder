@@ -1,4 +1,9 @@
-from app.services.discovery import extract_evidence, score_from_evidence
+import asyncio
+
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+
+from app.services.discovery import _ensure_repo, extract_evidence, score_from_evidence
+from app.models import Base, Repo, SourceOrg
 from app.models import UseCase
 
 SAMPLE_REVIEW = """
@@ -60,3 +65,24 @@ def test_evidence_anchors_deep_link():
     assert anchor_for_use_case("sequence-diagrams", anchors).endswith("101")
     assert anchor_for_use_case("summarization", anchors).endswith("100")
     assert anchor_for_use_case("atlas-change-stack", anchors) is None
+
+
+def test_bot_discovery_marks_an_existing_repo_as_coderabbit_enabled():
+    async def scenario():
+        engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+        sessions = async_sessionmaker(engine, expire_on_commit=False)
+        async with engine.begin() as connection:
+            await connection.run_sync(Base.metadata.create_all)
+        async with sessions() as session:
+            org = SourceOrg(org_name="demo", connection_type="discovered")
+            session.add(org)
+            await session.flush()
+            repo = Repo(source_org_id=org.id, full_name="demo/repo", has_coderabbit=False)
+            session.add(repo)
+            await session.commit()
+            found = await _ensure_repo(session, "demo/repo")
+            assert found is not None
+            assert found.has_coderabbit is True
+        await engine.dispose()
+
+    asyncio.run(scenario())
