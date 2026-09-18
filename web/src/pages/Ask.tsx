@@ -58,7 +58,7 @@ export default function Ask({ onManufacture }: { onManufacture: (slug: string) =
               <div className="mb-2 flex items-end justify-between">
                 <div>
                   <h2 className="font-semibold">Recommended use cases</h2>
-                  <p className="text-xs text-muted">Ranked from CodeRabbit documentation, available evidence, and demo effort.</p>
+                  <p className="text-xs text-muted">Product capabilities from CodeRabbit documentation. Example counts include only PRs with a live CodeRabbit review and a qualifying use-case fit.</p>
                 </div>
               </div>
               <div className="divide-y divide-borderc overflow-hidden rounded-xl border border-borderc bg-panel">
@@ -73,9 +73,12 @@ export default function Ask({ onManufacture }: { onManufacture: (slug: string) =
                       </div>
                       <p className="mt-1 text-xs text-muted">{recommendation.demo_notes}</p>
                       <p className="mt-2 text-xs text-muted">
-                        {recommendation.verified_examples > 0
-                          ? `${recommendation.verified_examples} verified example${recommendation.verified_examples === 1 ? "" : "s"}`
-                          : `${recommendation.candidate_count} predicted candidate${recommendation.candidate_count === 1 ? "" : "s"}`}
+                        {recommendation.reviewed_examples > 0
+                          ? `${recommendation.reviewed_examples} CodeRabbit-reviewed example${recommendation.reviewed_examples === 1 ? "" : "s"}`
+                          : "No verified CodeRabbit-reviewed example yet"}
+                        {recommendation.direct_evidence_examples > 0
+                          ? ` · ${recommendation.direct_evidence_examples} with the capability visible in-review`
+                          : ""}
                         {recommendation.why[0] ? ` · ${recommendation.why[0]}` : ""}
                       </p>
                     </div>
@@ -106,11 +109,22 @@ export default function Ask({ onManufacture }: { onManufacture: (slug: string) =
               <div className="mt-1 flex flex-wrap gap-x-2 text-xs text-muted">
                 <a href={r.doc_url} target="_blank" rel="noreferrer" className="text-info hover:underline">{r.use_case}</a>
                 <span>·</span>
-                <span className={r.verified ? "text-ok" : "text-warn"}>{r.verified ? "verified in review" : "predicted"}</span>
+                <span className="text-ok">CodeRabbit reviewed</span>
+                <span>·</span>
+                <span>{r.verified ? "capability visible in review" : "qualified from review + diff"}</span>
                 <span>·</span>
                 <span>{r.demo_effort} demo</span>
               </div>
-              <div className="mt-1 text-xs text-muted">{r.rationale}</div>
+              <div className="mt-3 space-y-2 rounded-lg border border-borderc bg-panel2 p-3 text-xs">
+                <div><span className="font-semibold text-white">What changed: </span><span className="text-muted">{r.showcase.pr_change}</span></div>
+                <div><span className="font-semibold text-white">Why this showcases {r.use_case}: </span><span className="text-muted">{r.showcase.why_this_pr}</span></div>
+                <div><span className="font-semibold text-white">CodeRabbit proof: </span><span className="text-muted">{r.showcase.coderabbit_evidence}</span></div>
+                <div><span className="font-semibold text-white">Product capability: </span><span className="text-muted">{r.showcase.product_capability}</span></div>
+                {r.pr.anchor_url && (
+                  <a href={r.pr.anchor_url} target="_blank" rel="noreferrer"
+                    className="inline-block font-semibold text-info hover:underline">Open CodeRabbit review evidence →</a>
+                )}
+              </div>
               {r.match_reasons.length > 0 && (
                 <div className="mt-2 text-xs text-muted">Why it matched: {r.match_reasons.join(" · ")}</div>
               )}

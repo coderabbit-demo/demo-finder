@@ -7,13 +7,14 @@ from app.services import search
 
 
 def use_case(slug: str, name: str, definition: str, category: str = "review",
-             keywords: list[str] | None = None) -> UseCase:
+             keywords: list[str] | None = None,
+             heuristics: dict | None = None) -> UseCase:
     return UseCase(
         slug=slug,
         name=name,
         definition=definition,
         category=category,
-        detection_heuristics={"keywords": keywords or []},
+        detection_heuristics={"keywords": keywords or [], **(heuristics or {})},
         required_config={},
         demo_script_notes="",
         doc_url=f"https://docs.coderabbit.ai/{slug}",
@@ -23,7 +24,8 @@ def use_case(slug: str, name: str, definition: str, category: str = "review",
 USE_CASES = [
     use_case("security-blast-radius", "Security Blast Radius",
              "Map dependencies, downstream consumers, tests, and security paths.",
-             "security", ["shared", "dependency", "consumer", "auth"]),
+             "security", ["shared", "dependency", "consumer", "auth"],
+             {"min_files": 3, "needs_multi_service": True}),
     use_case("security-deep-scan", "AI Deep Scan",
              "Scan committed code for exploitable vulnerabilities and exposed secrets.",
              "security", ["vulnerability", "secret", "scan"]),
@@ -101,9 +103,12 @@ def test_search_returns_docs_recommendation_and_ranked_candidate(monkeypatch):
             org = SourceOrg(org_name="demo")
             session.add(org)
             await session.flush()
-            repo = Repo(source_org_id=org.id, full_name="demo/service", languages=["python"])
+            repo = Repo(source_org_id=org.id, full_name="demo/service", languages=["python"],
+                        has_coderabbit=True)
             use_case_row = USE_CASES[0]
-            session.add_all([repo, use_case_row])
+            uninstalled_repo = Repo(source_org_id=org.id, full_name="demo/no-coderabbit",
+                                    languages=["python"], has_coderabbit=False)
+            session.add_all([repo, uninstalled_repo, use_case_row])
             await session.flush()
             candidate = PrCandidate(
                 repo_id=repo.id,
@@ -112,6 +117,7 @@ def test_search_returns_docs_recommendation_and_ranked_candidate(monkeypatch):
                 url="https://example.test/pull/42",
                 files_changed=["api/auth.py", "api/routes.py", "tests/test_auth.py"],
                 diff_stats={"files": 3, "additions": 80, "deletions": 12},
+                evidence_urls={"walkthrough": "https://example.test/pull/42#comment-1"},
             )
             session.add(candidate)
             await session.flush()
@@ -121,6 +127,35 @@ def test_search_returns_docs_recommendation_and_ranked_candidate(monkeypatch):
                 score=91,
                 rationale="verified dependency and consumer paths",
                 scored_by="review",
+            ))
+            uninstalled_candidate = PrCandidate(
+                repo_id=uninstalled_repo.id, pr_number=99,
+                title="Update shared auth route", url="https://example.test/pull/99",
+                files_changed=["api/auth.py", "web/client.ts", "tests/test_auth.py"],
+                diff_stats={"files": 3},
+                evidence_urls={"walkthrough": "https://example.test/pull/99#comment-1"},
+            )
+            session.add(uninstalled_candidate)
+            await session.flush()
+            session.add(CandidateScore(
+                pr_candidate_id=uninstalled_candidate.id,
+                use_case_id=use_case_row.id, score=99,
+                rationale="should be excluded because CodeRabbit is not installed",
+                scored_by="review",
+            ))
+            no_review_candidate = PrCandidate(
+                repo_id=repo.id, pr_number=100,
+                title="Update shared auth route", url="https://example.test/pull/100",
+                files_changed=["api/auth.py", "web/client.ts", "tests/test_auth.py"],
+                diff_stats={"files": 3}, evidence_urls={},
+            )
+            session.add(no_review_candidate)
+            await session.flush()
+            session.add(CandidateScore(
+                pr_candidate_id=no_review_candidate.id,
+                use_case_id=use_case_row.id, score=100,
+                rationale="should be excluded because no CodeRabbit review was captured",
+                scored_by="heuristic",
             ))
             await session.commit()
 
@@ -133,7 +168,38 @@ def test_search_returns_docs_recommendation_and_ranked_candidate(monkeypatch):
     result = asyncio.run(scenario())
 
     assert result["intent"]["use_case_slugs"][0] == "security-blast-radius"
-    assert result["recommendations"][0]["verified_examples"] == 1
+    assert result["recommendations"][0]["reviewed_examples"] == 1
+    assert result["recommendations"][0]["direct_evidence_examples"] == 0
+    assert result["recommendations"][0]["verified_examples"] == 0
     assert result["recommendations"][0]["effort"] == "ready"
-    assert result["results"][0]["verified"] is True
+    assert len(result["results"]) == 1
+    assert result["results"][0]["verified"] is False
+    assert result["results"][0]["coderabbit_reviewed"] is True
+    assert result["results"][0]["showcase"]["evidence_kind"] == "review-plus-diff"
+    assert "3 changed files" in result["results"][0]["showcase"]["pr_change"]
+    assert "Security Blast Radius" in result["results"][0]["showcase"]["why_this_pr"]
+    assert "CodeRabbit reviewed" in result["results"][0]["showcase"]["coderabbit_evidence"]
     assert result["results"][0]["demo_effort"] == "quick"
+
+
+def test_product_fit_requires_multiple_observable_signals_without_direct_evidence():
+    candidate = PrCandidate(
+        repo_id=1, pr_number=1, title="Update shared auth route", url="u",
+        files_changed=["api/auth.py", "web/client.ts", "tests/test_auth.py"],
+        diff_stats={"files": 3}, evidence_urls={"walkthrough": "comment"})
+
+    qualifies, signals = search._product_fit(candidate, USE_CASES[0])
+
+    assert qualifies is True
+    assert len(signals) >= 2
+
+
+def test_product_fit_rejects_vague_pr_even_if_coderabbit_reviewed_it():
+    candidate = PrCandidate(
+        repo_id=1, pr_number=1, title="Update copy", url="u",
+        files_changed=["README.md"], diff_stats={"files": 1},
+        evidence_urls={"walkthrough": "comment"})
+
+    qualifies, _ = search._product_fit(candidate, USE_CASES[0])
+
+    assert qualifies is False

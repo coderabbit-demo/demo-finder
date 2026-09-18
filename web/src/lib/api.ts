@@ -79,14 +79,20 @@ export interface SearchOut {
   recommendations: {
     slug: string; name: string; category: string; confidence: number; why: string[];
     doc_url: string; demo_notes: string; required_config: Record<string, unknown>;
-    candidate_count: number; verified_examples: number; best_candidate_score: number;
+    candidate_count: number; reviewed_examples: number; direct_evidence_examples: number;
+    verified_examples: number; best_candidate_score: number;
     effort: "ready" | "quick" | "configure" | "setup";
   }[];
   results: {
     score: number; use_case: string; use_case_slug: string; rationale: string;
-    doc_url: string; scored_by: string; verified: boolean;
+    doc_url: string; scored_by: string; verified: boolean; coderabbit_reviewed: true;
     demo_effort: "quick" | "moderate" | "involved" | "large";
     match_reasons: string[];
+    showcase: {
+      product_type: string; product_capability: string; pr_change: string;
+      why_this_pr: string; coderabbit_evidence: string;
+      evidence_kind: "direct" | "review-plus-diff";
+    };
     pr: { candidate_id: number; title: string; url: string; anchor_url?: string | null;
           repo: string; number: number };
   }[];

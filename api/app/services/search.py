@@ -14,9 +14,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from ..models import CandidateScore, PrCandidate, UseCase
+from ..models import CandidateScore, PrCandidate, Repo, UseCase
 from . import llm
-from .discovery import anchor_for_use_case
+from .discovery import EVIDENCE_LABELS, anchor_for_use_case, evidence_for_use_case
 
 WEAK_THRESHOLD = 70.0
 LEXICAL_CONFIDENCE = 42.0
@@ -241,6 +241,89 @@ def _context_match(candidate: PrCandidate, intent: dict) -> tuple[float, list[st
     return min(100.0, score), reasons
 
 
+def _changed_components(files: list[str]) -> list[str]:
+    components: list[str] = []
+    for path in files:
+        part = path.split("/", 1)[0] if "/" in path else "repository root"
+        if part not in components:
+            components.append(part)
+    return components
+
+
+def _product_fit(candidate: PrCandidate, use_case: UseCase) -> tuple[bool, list[str]]:
+    """Apply explicit product-shape requirements before ranking a PR.
+
+    Direct review evidence always qualifies. For products rendered outside the
+    GitHub comment (for example Change Stack security views), require multiple
+    observable properties of the diff instead of trusting a candidate score.
+    """
+    anchors = candidate.evidence_urls or {}
+    if anchor_for_use_case(use_case.slug, anchors):
+        return True, [f"CodeRabbit emitted {item}" for item in
+                      evidence_for_use_case(use_case.slug, anchors)]
+
+    rules = use_case.detection_heuristics or {}
+    files = candidate.files_changed or []
+    file_count = int((candidate.diff_stats or {}).get("files") or len(files))
+    searchable = f"{candidate.title} {' '.join(files)}".lower()
+    signals: list[str] = []
+
+    minimum = rules.get("min_files")
+    if minimum and file_count >= int(minimum):
+        signals.append(f"the diff spans {file_count} files (minimum {minimum})")
+    maximum = rules.get("max_files")
+    if maximum and file_count <= int(maximum):
+        signals.append(f"the {file_count}-file diff stays demo-sized (maximum {maximum})")
+    extensions = tuple(str(ext).lower() for ext in rules.get("file_exts", []))
+    ext_hits = sorted({ext for ext in extensions if any(path.lower().endswith(ext) for path in files)})
+    if ext_hits:
+        signals.append(f"changed files match {', '.join(ext_hits)}")
+    keyword_hits = [str(word) for word in rules.get("keywords", [])
+                    if str(word).lower() in searchable]
+    if keyword_hits:
+        signals.append(f"the change explicitly involves {', '.join(keyword_hits[:4])}")
+    components = _changed_components(files)
+    if rules.get("needs_multi_service") and len(components) >= 2:
+        signals.append(f"the change crosses {len(components)} components")
+    required_ci = rules.get("ci_status")
+    actual_ci = (candidate.diff_stats or {}).get("ci_status")
+    if required_ci == "red" and actual_ci in {"red", "failure", "failed"}:
+        signals.append("CI is failing, giving CodeRabbit a concrete failure to diagnose")
+
+    # A live CodeRabbit review is required elsewhere. Two independent diff
+    # signals make this a clear product example when the product UI itself is
+    # not represented by a GitHub-comment signature.
+    return len(signals) >= 2, signals
+
+
+def _showcase(candidate: PrCandidate, use_case: UseCase,
+              fit_signals: list[str]) -> dict:
+    files = candidate.files_changed or []
+    stats = candidate.diff_stats or {}
+    file_count = int(stats.get("files") or len(files))
+    components = _changed_components(files)
+    direct = evidence_for_use_case(use_case.slug, candidate.evidence_urls or {})
+    review_evidence = direct or [EVIDENCE_LABELS[key] for key in
+                                 (candidate.evidence_urls or {}) if key in EVIDENCE_LABELS]
+    scope = f"{file_count} changed file{'s' if file_count != 1 else ''}"
+    if components:
+        scope += f" across {', '.join(components[:4])}"
+    key_files = ", ".join(files[:3])
+    if key_files:
+        scope += f"; representative files: {key_files}"
+    why = "; ".join(fit_signals)
+    return {
+        "product_type": use_case.category,
+        "product_capability": use_case.definition,
+        "pr_change": f"“{candidate.title}” changes {scope}.",
+        "why_this_pr": (f"This PR showcases {use_case.name} because {why}. "
+                        f"Demo action: {use_case.demo_script_notes}"),
+        "coderabbit_evidence": ("CodeRabbit reviewed this PR and produced "
+                                + ", ".join(review_evidence) + "."),
+        "evidence_kind": "direct" if direct else "review-plus-diff",
+    }
+
+
 def _recommendations(use_cases: list[UseCase], intent: dict,
                      rows: list[CandidateScore]) -> list[dict]:
     by_slug: dict[str, list[CandidateScore]] = defaultdict(list)
@@ -253,7 +336,9 @@ def _recommendations(use_cases: list[UseCase], intent: dict,
         if not use_case:
             continue
         candidates = by_slug.get(slug, [])
-        verified = sum(row.scored_by == "review" for row in candidates)
+        reviewed = len(candidates)
+        direct = sum(bool(anchor_for_use_case(
+            row.use_case.slug, row.candidate.evidence_urls or {})) for row in candidates)
         best = max((row.score for row in candidates), default=0)
         recommendations.append({
             "slug": slug,
@@ -265,9 +350,13 @@ def _recommendations(use_cases: list[UseCase], intent: dict,
             "demo_notes": use_case.demo_script_notes,
             "required_config": use_case.required_config,
             "candidate_count": len(candidates),
-            "verified_examples": verified,
+            "reviewed_examples": reviewed,
+            "direct_evidence_examples": direct,
+            # Retained for API compatibility; now strictly means the selected
+            # capability is visible in the CodeRabbit review itself.
+            "verified_examples": direct,
             "best_candidate_score": round(best, 1),
-            "effort": _setup_effort(use_case, verified),
+            "effort": _setup_effort(use_case, reviewed),
         })
     return recommendations
 
@@ -283,7 +372,9 @@ async def search(session: AsyncSession, query: str) -> dict:
             .options(selectinload(CandidateScore.candidate).selectinload(PrCandidate.repo),
                      selectinload(CandidateScore.use_case))
             .join(PrCandidate, CandidateScore.pr_candidate_id == PrCandidate.id)
+            .join(Repo, PrCandidate.repo_id == Repo.id)
             .where(PrCandidate.state == "open")
+            .where(Repo.has_coderabbit.is_(True))
             .order_by(CandidateScore.score.desc()).limit(200))
     if target_ids:
         stmt = stmt.where(CandidateScore.use_case_id.in_(target_ids))
@@ -291,14 +382,22 @@ async def search(session: AsyncSession, query: str) -> dict:
             if row.candidate is not None and row.candidate.repo is not None]
 
     results = []
+    qualified_rows: list[CandidateScore] = []
     for candidate_score in rows:
         candidate = candidate_score.candidate
+        if not candidate.evidence_urls:
+            continue
+        qualifies, fit_signals = _product_fit(candidate, candidate_score.use_case)
+        if not qualifies:
+            continue
         context_score, context_reasons = _context_match(candidate, intent)
         if context_score == 0:
             continue
+        qualified_rows.append(candidate_score)
         relevance = intent.get("use_case_scores", {}).get(candidate_score.use_case.slug, 35.0)
         efficiency, effort = _candidate_efficiency(candidate)
-        verified = candidate_score.scored_by == "review"
+        verified = bool(anchor_for_use_case(
+            candidate_score.use_case.slug, candidate.evidence_urls or {}))
         score = (0.62 * candidate_score.score + 0.23 * relevance
                  + 0.10 * context_score + 0.05 * efficiency)
         if verified:
@@ -310,6 +409,8 @@ async def search(session: AsyncSession, query: str) -> dict:
             "doc_url": candidate_score.use_case.doc_url,
             "scored_by": candidate_score.scored_by,
             "verified": verified,
+            "coderabbit_reviewed": True,
+            "showcase": _showcase(candidate, candidate_score.use_case, fit_signals),
             "demo_effort": effort,
             "match_reasons": (intent.get("use_case_reasons", {})
                               .get(candidate_score.use_case.slug, [])[:2] + context_reasons),
@@ -317,16 +418,17 @@ async def search(session: AsyncSession, query: str) -> dict:
                 "candidate_id": candidate.id,
                 "title": candidate.title,
                 "url": candidate.url,
-                "anchor_url": anchor_for_use_case(
-                    candidate_score.use_case.slug, candidate.evidence_urls or {}),
+                "anchor_url": (anchor_for_use_case(
+                    candidate_score.use_case.slug, candidate.evidence_urls or {})
+                    or next(iter((candidate.evidence_urls or {}).values()), None)),
                 "repo": candidate.repo.full_name,
                 "number": candidate.pr_number,
             },
             "rationale": candidate_score.rationale,
         })
-    results.sort(key=lambda result: (-result["score"], not result["verified"], result["pr"]["repo"]))
+    results.sort(key=lambda result: (not result["verified"], -result["score"], result["pr"]["repo"]))
     results = results[:MAX_RESULTS]
-    recommendations = _recommendations(use_cases, intent, rows)
+    recommendations = _recommendations(use_cases, intent, qualified_rows)
     best = results[0]["score"] if results else 0
     return {
         "intent": intent,
