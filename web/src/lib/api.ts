@@ -76,8 +76,20 @@ export interface Scored {
 }
 export interface SearchOut {
   intent: Record<string, unknown>;
-  results: { score: number; use_case: string; rationale: string;
-             pr: { title: string; url: string; repo: string; number: number } }[];
+  recommendations: {
+    slug: string; name: string; category: string; confidence: number; why: string[];
+    doc_url: string; demo_notes: string; required_config: Record<string, unknown>;
+    candidate_count: number; verified_examples: number; best_candidate_score: number;
+    effort: "ready" | "quick" | "configure" | "setup";
+  }[];
+  results: {
+    score: number; use_case: string; use_case_slug: string; rationale: string;
+    doc_url: string; scored_by: string; verified: boolean;
+    demo_effort: "quick" | "moderate" | "involved" | "large";
+    match_reasons: string[];
+    pr: { candidate_id: number; title: string; url: string; anchor_url?: string | null;
+          repo: string; number: number };
+  }[];
   suggest_manufacture: boolean;
 }
 export interface ForkSuggestion {

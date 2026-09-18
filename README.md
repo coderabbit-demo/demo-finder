@@ -17,9 +17,9 @@ cd web && npm install && npm run dev               # http://localhost:5173
 ```
 
 `DEV_MODE=true` seeds sample repos/PRs/scores so the UI works with zero tokens.
-Set `GITHUB_TOKEN` for real crawling/forking, `ANTHROPIC_API_KEY` for LLM
-scoring, NL search intent parsing, and change/config generation (heuristic
-fallbacks run without it).
+Set `GITHUB_TOKEN` for real crawling/forking and `ANTHROPIC_API_KEY` for LLM
+score refinement, ambiguous search queries, and change/config generation.
+Clear searches are ranked directly against the docs-backed capability catalog.
 
 ## Docker (Postgres)
 
